@@ -5,5 +5,5 @@ tensorflow-gpu == 2.4.1
 scikit-image == 0.16.2
 matplotlib == 3.2.2
 iopath == 0.1.8
-numpy == 1.19.5
+numpy == 1.19.5 
 pyyaml==5.1

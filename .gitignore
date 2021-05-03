@@ -1,0 +1,11 @@
+flow-track/*.onnx
+flow-track/*.trt
+flow-track/*.mp4
+flow-track/__pycache__
+flow-track/yolo/
+flow-track/input/
+flow-track/helper.py 
+flow-track/output/
+flow-track/test_img/
+flow-track/model/
+flow-track/live_imgs/
