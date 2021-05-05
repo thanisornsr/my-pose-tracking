@@ -1,5 +1,5 @@
 # my-pose-tracking
-1.flow track<br/>
+**1.flow track**<br/>
 1.1 Pre-recorded mode<br/>
 ![](flow-track/GIF/output_v0.gif)<br/>
 ![](flow-track/GIF/output_v1.gif)<br/>
