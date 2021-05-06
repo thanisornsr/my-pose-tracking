@@ -1,28 +1,10 @@
-# import libs
-# import torch
-import glob
-# import detectron2
-# from detectron2.utils.logger import setup_logger
-# setup_logger()
 
+import glob
 import numpy as np 
 import os, json, cv2, random, math
 
-# from detectron2 import model_zoo
-# from detectron2.engine import DefaultPredictor
-# from detectron2.config import get_cfg
-# from detectron2.utils.visualizer import Visualizer
-# from detectron2.data import MetadataCatalog, DatasetCatalog
-
-# import tensorflow as tf
-# from tensorflow.keras import Model, layers, models, optimizers
-
-# import skimage.io as io
 from skimage.transform import resize
 from timeit import default_timer as timer 
-
-# import matplotlib.pyplot as plt
-# import pylab
 
 import tensorrt as trt 
 import pycuda.driver as cuda
@@ -439,34 +421,6 @@ def make_video_flow_track(input_images_dir,input_processing_times,input_Q):
 			tbbox = qs.bbox
 			tkps = qs.joints
 			tvs = qs.valids
-
-			# o_kps = np.transpose(tkps)
-			# # scale kps to image size
-			# if tbbox[2] == 0:
-			# 	tbbox[2] = 1
-			# if tbbox[3] == 0:
-			# 	tbbox[3] = 1
-			# # print('from ({},{}) to ({},{})'.format(output_shape[1],output_shape[0],tbbox[2],tbbox[3]))
-			# scale_x = tbbox[2]/output_shape[1]
-			# scale_y = tbbox[3]/output_shape[0]
-
-			# temp_scale = np.array([scale_x,scale_y])
-
-			# for ikps in range(len(o_kps)):
-			# 	temp_val = o_kps[ikps,:]
-			# 	# print('b4_scale: {}'.format(temp_val))
-			# 	o_kps[ikps,:] = np.multiply(temp_val,temp_scale)
-			# 	# print('at_scale: {}'.format(o_kps[ikps,:]))
-			# 	# convert kps to image location(global)
-			# g_kps = o_kps
-
-			# o_x = tbbox[0]
-			# o_y = tbbox[1]
-			# o_origin = np.array([tbbox[0],tbbox[1]])
-
-			# for gkps in range(len(g_kps)):
-			# 	if g_kps[gkps,0] != 0:
-			# 		g_kps[gkps,:] = g_kps[gkps,:] + o_origin
 
 			g_kps = qs.global_joints
 
