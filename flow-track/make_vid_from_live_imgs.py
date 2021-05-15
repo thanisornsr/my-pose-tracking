@@ -3,7 +3,7 @@ import glob
 import os
 
 input_images_dir = './live_imgs'
-FPS = 2
+FPS = 3
 for filename in sorted(glob.glob('./live_output.mp4')):
     os.remove(filename)
 

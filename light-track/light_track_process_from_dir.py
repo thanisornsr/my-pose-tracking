@@ -34,6 +34,7 @@ BATCH_SIZE = 1
 USE_FP16 = False # USE FP32
 input_shape = (384, 288)
 output_shape = (96,72)
+KEY_FRAME = 2
 
 # build human detector
 print('Generating human detector: ...')
@@ -73,12 +74,12 @@ print('Done Warming up!')
 # run flow_track_from_dir
 print('Processing frames: ...')
 
-Q,processing_times = light_track_from_dir(a.input_dir,trt_yolo,context2,bindings2,d_input2,d_output2,stream2,output2,input_shape)
+Q,processing_times = light_track_from_dir(a.input_dir,trt_yolo,context2,bindings2,d_input2,d_output2,stream2,output2,input_shape,output_shape,KEY_FRAME)
 
 print('Processing frames: done')
 
-# print('Creating video: ...')
-# clear_output_folder('.')
-# make_video_light_track(a.input_dir,processing_times,Q) 
-# print('Creating video: done')
+print('Creating video: ...')
+clear_output_folder('.')
+make_video_light_track(a.input_dir,processing_times,Q) 
+print('Creating video: done')
 

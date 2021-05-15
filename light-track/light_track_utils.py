@@ -126,7 +126,7 @@ def heatmaps_to_joints(i_heatmaps):
 	o_J = [] #joints position
 	valid_thres = 15
 	o_V = [] #valid
-	n_h = p_heatmaps.shape[0]
+	n_h = i_heatmaps.shape[0]
 	for k in range(n_h):
 		temp_heatmap = i_heatmaps[k,:,:,:]
 		tkp_x = []
@@ -202,29 +202,35 @@ def expand_bboxes(input_bboxes,input_img_h,input_img_w,percent_expand=20):
 	# out_bboxes.append(new_bbox)
 	return out_bboxes
 
-def crop_img_from_bboxes(input_img,input_bboxes):
+def crop_img_from_bboxes(input_img,input_bboxes,input_shape):
+	idx_to_pop = []
 	ori_img = input_img
 	temp_bboxes = input_bboxes
 	output_imgs = []
-	for i_bbox in temp_bboxes:
+	for bbox_i in range(len(temp_bboxes)):
+		i_bbox = temp_bboxes[bbox_i]
 		o_crop = ori_img[int(i_bbox[1]):int(i_bbox[1]+i_bbox[3]),int(i_bbox[0]):int(i_bbox[0]+i_bbox[2]),:]
 		if o_crop.shape[0] == 0 or o_crop.shape[1]  == 0 or o_crop.shape[2] == 0:
 			# print('detect empty image')
+			idx_to_pop.append(bbox_i)
 			continue
 
 		o_crop = resize(o_crop,input_shape)
 		o_crop = o_crop.astype('float32')
 		output_imgs.append(o_crop)
-	n_out = len(batch_imgs)
+	n_out = len(output_imgs)
 	# output_imgs = np.array(output_imgs)
 	# output_imgs = tf.convert_to_tensor(output_imgs,dtype=tf.float32)
-	return output_imgs,n_out
+	return output_imgs,n_out,idx_to_pop
 
 
 def get_bbox_from_joints(old_bboxes,predicted_J,predicted_V,output_shape,input_w,input_h,percent_expand):
 	output_bboxes = []
 	no_joint_idx = []
 	output_J = predicted_J
+	# print(len(old_bboxes))
+	# print(len(predicted_J))
+	# print('***************************')
 	assert len(old_bboxes) == len(predicted_J)
 	for k in range(len(predicted_J)):
 		temp_o_j = output_J[k]
@@ -257,6 +263,7 @@ def get_bbox_from_joints(old_bboxes,predicted_J,predicted_V,output_shape,input_w
 		if len(xs) <= 0 and len(ys) <= 0:
 			# print('no joint found')
 			no_joint_idx.append(k)
+			
 			continue
 		min_x = min(xs)
 		max_x = max(xs)
@@ -295,44 +302,28 @@ def cal_scoring_matrix(input_Q,input_bboxes):
 			score_mat[ij,iq] = get_iou(bbox_a,bbox_b)
 	return score_mat
 
- def get_iou(a, b, epsilon=1e-5):
-    """ Given two boxes `a` and `b` defined as a list of four numbers:
-            [x1,y1,x2,y2]
-        where:
-            x1,y1 represent the upper left corner
-            x2,y2 represent the lower right corner
-        It returns the Intersect of Union score for these two boxes.
-
-    Args:
-        a:          (list of 4 numbers) [x1,y1,x2,y2]
-        b:          (list of 4 numbers) [x1,y1,x2,y2]
-        epsilon:    (float) Small value to prevent division by zero
-
-    Returns:
-        (float) The Intersect of Union score.
-    """
-    # COORDINATES OF THE INTERSECTION BOX
-    x1 = max(a[0], b[0])
-    y1 = max(a[1], b[1])
-    x2 = min(a[2], b[2])
-    y2 = min(a[3], b[3])
-
-    # AREA OF OVERLAP - Area where the boxes intersect
-    width = (x2 - x1)
-    height = (y2 - y1)
-    # handle case where there is NO overlap
-    if (width<0) or (height <0):
-        return 0.0
-    area_overlap = width * height
-
-    # COMBINED AREA
-    area_a = (a[2] - a[0]) * (a[3] - a[1])
-    area_b = (b[2] - b[0]) * (b[3] - b[1])
-    area_combined = area_a + area_b - area_overlap
-
-    # RATIO OF AREA OF OVERLAP OVER COMBINED AREA
-    iou = area_overlap / (area_combined+epsilon)
-    return iou
+def get_iou(a, b, epsilon=1e-5):
+	x1 = max(a[0], b[0])
+	y1 = max(a[1], b[1])
+	x2 = min(a[2], b[2])
+	y2 = min(a[3], b[3])
+	
+	# AREA OF OVERLAP - Area where the boxes intersect
+	width = (x2 - x1)
+	height = (y2 - y1)
+	# handle case where there is NO overlap
+	if (width<0) or (height <0):
+		return 0.0
+	area_overlap = width * height
+	
+	# COMBINED AREA
+	area_a = (a[2] - a[0]) * (a[3] - a[1])
+	area_b = (b[2] - b[0]) * (b[3] - b[1])
+	area_combined = area_a + area_b - area_overlap
+	
+	# RATIO OF AREA OF OVERLAP OVER COMBINED AREA
+	iou = area_overlap / (area_combined+epsilon)
+	return iou
 
 def get_id_to_assign(inputo_pose_id,input2_ori_Q,input2_Ji,input_sim_mat,current_frame):
 	get_id_s_mat = input_sim_mat
@@ -390,7 +381,7 @@ def predict(batch,context2,bindings2,d_input2,d_output2,stream2,output2):
 
     return output2
 
-def light_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output2,stream2,output2,input_shape,input_key_frame):
+def light_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output2,stream2,output2,input_shape,output_shape,input_key_frame):
 # to fix
 	Q = []
 	processing_times = []
@@ -402,9 +393,11 @@ def light_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_outp
 	pose_id = 0
 	key_frame = input_key_frame
 	for filename in sorted(glob.glob(images_dir+'/*.jpg')):
+		# print('Processing frame {} ...'.format(frame_id))
 		start = timer()
 		img = cv2.imread(filename)
 		img_h,img_w,_ = img.shape
+		# print('{},{}'.format(img_h,img_w))
 
 		img_RGB = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 		img_RGB = img_RGB / 255.0
@@ -415,11 +408,14 @@ def light_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_outp
 			last_Q = Q[-1]
 			# still_tracking_ID = [tracked_ID[x] for x in range(len(tracked_ID)) if tracked_status[x] == 1]
 			still_tracking_ID = [tQ.id for tQ in last_Q]
-			bboxes_from_last_frames = [tQ.bbox for tq in last_Q]
+			bboxes_from_last_frames = [tQ.bbox for tQ in last_Q]
 			# batch_bboxes = expand_bboxes(bboxes_from_last_frames,img_h,img_w,20)
-			batch_imgs,n_human = crop_img_from_bboxes(img_RGB,bboxes_from_last_frames) 
+			batch_bboxes = bboxes_from_last_frames
+			batch_imgs,n_human, no_img = crop_img_from_bboxes(img_RGB,bboxes_from_last_frames,input_shape)
+			for idx in reversed(no_img):
+				batch_bboxes.pop(idx)
 
-		
+		p_heatmaps = []
 		for bimg in batch_imgs:
 			img_to_predict = np.reshape(bimg,(1,*input_shape,3))
 			tp_heatmaps = predict(img_to_predict,context2,bindings2,d_input2,d_output2,stream2,output2)
@@ -429,9 +425,11 @@ def light_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_outp
 
 		temp_Ji, temp_Vi = heatmaps_to_joints(p_heatmaps)
 		# ------------------------------------------------------------------------
-		# Done till here
+		
 		new_bboxes,no_joint,temp_Ji = get_bbox_from_joints(batch_bboxes,temp_Ji,temp_Vi,output_shape,img_w,img_h,20)
-		for idx in no_joint:
+		for idx in reversed(no_joint):
+			# print(len(batch_bboxes))
+			# print(idx)
 			batch_bboxes.pop(idx)
 			temp_Ji.pop(idx)
 			temp_Vi.pop(idx)
@@ -478,7 +476,7 @@ def make_video_light_track(input_images_dir,input_processing_times,input_Q):
 		img_size = (i_w,i_h)
 		ori_array.append(img)
 
-		Qs = Q[frame_count]
+		Qs = input_Q[frame_count]
 
 		temp_FPS = 1/input_processing_times[frame_count]
 		to_add_str = 'FPS: {:.2f}'.format(temp_FPS)

@@ -12,9 +12,9 @@ dummy_input_batch = np.zeros((BATCH_SIZE,256,192,3),dtype = np.float32)
 
 
 if USE_FP16:
-    os.system("/usr/src/tensorrt/bin/trtexec --onnx=resnet152_onnx_model.onnx --saveEngine=resnet152_engine.trt --explicitBatch --fp16")
+    os.system("/usr/src/tensorrt/bin/trtexec --onnx=lt_resnet152_onnx_model.onnx --saveEngine=lt_resnet152_engine.trt --explicitBatch --fp16")
 else:
-    os.system("/usr/src/tensorrt/bin/trtexec --onnx=resnet152_onnx_model.onnx --saveEngine=resnet152_engine.trt --explicitBatch")
+    os.system("/usr/src/tensorrt/bin/trtexec --onnx=lt_resnet152_onnx_model.onnx --saveEngine=lt_resnet152_engine.trt --explicitBatch")
 
 
 # import tensorrt as trt

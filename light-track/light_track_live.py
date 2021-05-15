@@ -1,6 +1,6 @@
 
-from flow_track_utils import *
-# import glob
+from light_track_utils import *
+import glob
 import numpy as np
 from yolo_classes import get_cls_dict
 from yolo_with_plugins import get_input_shape, TrtYOLO
@@ -18,10 +18,8 @@ from timeit import default_timer as timer
 
 #live config
 is_draw_skeleton = True
-is_show = True
-is_save = False
-
-
+is_show = False
+is_save = True
 
 # config 
 h = 416
@@ -30,7 +28,10 @@ conf_th = 0.95
 yolo_model = 'yolov4-416'
 BATCH_SIZE = 1
 USE_FP16 = False # USE FP32
-input_shape = (256,192)
+input_shape =(384, 288)
+output_shape = (96,72)
+KEY_FRAME = 5
+
 
 skeleton_list = [(0,1),(2,0),(0,3),(0,4),(3,5),(4,6),(5,7),(6,8),(4,3),(3,9),(4,10),(10,9),(9,11),(10,12),(11,13),(12,14)]
 color_list = [(255,0,0),(0,255,0),(0,0,255),(255,255,0),(255,0,255),(0,255,255)]
@@ -48,6 +49,8 @@ if not (cap.isOpened()):
 
 ret, frame = cap.read()  
 i_h, i_w,_ = frame.shape
+img_h = i_h 
+img_w = i_w 
 print('Connecting Camera: Done')
 
 # build human detector
@@ -63,27 +66,25 @@ print('Generating pose estimator: ...')
 dummy_input_batch = np.zeros((BATCH_SIZE,*input_shape,3),dtype = np.float32)
 
 target_dtype = np.float16 if USE_FP16 else np.float32
-# f2 = open("resnet152_engine.trt","rb")
-f2 = open("resnet_engine.trt","rb")
+f2 = open("lt_resnet152_engine.trt","rb")
+# f2 = open("lt_resnet_engine.trt","rb")
 runtime2 = trt.Runtime(trt.Logger(trt.Logger.WARNING))
 engine2 = runtime2.deserialize_cuda_engine(f2.read())
 context2 = engine2.create_execution_context()
-output2 = np.empty([BATCH_SIZE,64,48,15], dtype = target_dtype)
+output2 = np.empty([BATCH_SIZE,*output_shape,15], dtype = target_dtype)
 d_input2 = cuda.mem_alloc(1 * dummy_input_batch.nbytes)
 d_output2 = cuda.mem_alloc(1 * output2.nbytes)
 bindings2 = [int(d_input2),int(d_output2)]
 stream2 = cuda.Stream()
 
-
 print('Generating pose estimator: Done')
 
-print('Warming up: ...')
+print('Warming up ...')
 
 predict(dummy_input_batch,context2,bindings2,d_input2,d_output2,stream2,output2)
 boxes, confs, clss = hdetector.detect(frame,conf_th)
 
-print('Warming up: Done')
-
+print('Done Warming up!')
 
 if is_save:
     print('Cleaning live imgs folder: ...')
@@ -102,31 +103,32 @@ while countdown_sec > 0:
 Q = []
 frame_id = 0
 pose_id = 0
-
+key_frame = KEY_FRAME
 while True:
     start = timer()
     ret, img = cap.read() 
     
 
-    temp_bboxes = img_to_bboxes(img,hdetector,input_shape)
+    # img_h,img_w,_ = img.shape
+    # print('{},{}'.format(img_h,img_w))
+
     img_RGB = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
     img_RGB = img_RGB / 255.0
-    batch_imgs = []
-    # print(temp_bboxes)
 
-    for i_bbox in temp_bboxes:
-        # print(i_bbox)
-        o_crop = img_RGB[int(i_bbox[1]):int(i_bbox[1]+i_bbox[3]),int(i_bbox[0]):int(i_bbox[0]+i_bbox[2]),:]
-        if o_crop.shape[0] == 0 or o_crop.shape[1]  == 0 or o_crop.shape[2] == 0:
-            print('detect empty image')
-            continue
-        o_crop = resize(o_crop,input_shape)
-        o_crop = o_crop.astype('float32')
-        batch_imgs.append(o_crop)
-    nh = len(batch_imgs)
+    if (frame_id % key_frame) == 0:
+        batch_imgs,batch_bboxes,n_human = human_detect_module(hdetector,img,img_RGB,input_shape)
+    else:
+        last_Q = Q[-1]
+        # still_tracking_ID = [tracked_ID[x] for x in range(len(tracked_ID)) if tracked_status[x] == 1]
+        still_tracking_ID = [tQ.id for tQ in last_Q]
+        bboxes_from_last_frames = [tQ.bbox for tQ in last_Q]
+        # batch_bboxes = expand_bboxes(bboxes_from_last_frames,img_h,img_w,20)
+        batch_bboxes = bboxes_from_last_frames
+        batch_imgs,n_human, no_img = crop_img_from_bboxes(img_RGB,bboxes_from_last_frames,input_shape)
+        for idx in reversed(no_img):
+            batch_bboxes.pop(idx)
 
     p_heatmaps = []
-	
     for bimg in batch_imgs:
         img_to_predict = np.reshape(bimg,(1,*input_shape,3))
         tp_heatmaps = predict(img_to_predict,context2,bindings2,d_input2,d_output2,stream2,output2)
@@ -134,39 +136,41 @@ while True:
 
     p_heatmaps = np.array(p_heatmaps)
 
-    temp_Ji,temp_Vi = heatmaps_to_joints(p_heatmaps)
-    current_Q = []
+    temp_Ji, temp_Vi = heatmaps_to_joints(p_heatmaps)
+    # ------------------------------------------------------------------------
+    
+    new_bboxes,no_joint,temp_Ji = get_bbox_from_joints(batch_bboxes,temp_Ji,temp_Vi,output_shape,img_w,img_h,20)
+    for idx in reversed(no_joint):
+        # print(len(batch_bboxes))
+        # print(idx)
+        batch_bboxes.pop(idx)
+        temp_Ji.pop(idx)
+        temp_Vi.pop(idx)
+    n_human = len(temp_Ji)
 
     if frame_id == 0:
-        for j in range(nh):
-            temp_bbox = temp_bboxes[j]
-            temp_j = temp_Ji[j]
-            temp_v = temp_Vi[j]
-            temp_pose = new_Pose(frame_id,pose_id,temp_j,temp_bbox,temp_v)
-            temp_pose = get_global_kps(temp_pose,(64, 48))
-            Q.append(temp_pose)
-            current_Q.append(temp_pose)
+        Q_to_add = []
+        for j in range(n_human):
+            temp_pose = new_Pose(frame_id,pose_id,temp_Ji[j],batch_bboxes[j],temp_Vi[j])
+            Q_to_add.append(temp_pose)
             pose_id = pose_id + 1
-
         frame_id = frame_id + 1
+        current_Q = Q_to_add
+        Q.append(Q_to_add)
     else:
-        temp_sim_mat = cal_sim_mat(Q,temp_Ji,frame_id)
-
-        pose_id, temp_ids = get_id_to_assign(pose_id,Q,temp_Ji,temp_sim_mat,frame_id)
-        for j in range(nh):
-            temp_bbox = temp_bboxes[j]
-            # print(temp_bbox)
-            temp_j = temp_Ji[j]
-            temp_v = temp_Vi[j]
-            t_pose_id = temp_ids[j]
-            temp_pose = new_Pose(frame_id,t_pose_id,temp_j,temp_bbox,temp_v)
-            temp_pose = get_global_kps(temp_pose,(64, 48))
-            current_Q.append(temp_pose)
-            Q.append(temp_pose)
-
+        t_score_matrix = cal_scoring_matrix(Q,new_bboxes) 
+        pose_id, temp_ids = get_id_to_assign(pose_id,Q,temp_Ji,t_score_matrix,frame_id)
+        Q_to_add = []
+        for j in range(len(temp_ids)):
+            temp_pose = new_Pose(frame_id,temp_ids[j],temp_Ji[j],new_bboxes[j],temp_Vi[j])
+            Q_to_add.append(temp_pose)
         frame_id = frame_id + 1
+        current_Q = Q_to_add
+        Q.append(Q_to_add)
     end = timer()
-    # print(current_Q)
+
+
+
 
     img_out = np.copy(img)
 
@@ -182,7 +186,7 @@ while True:
             tbbox = qs.bbox
             tkps = qs.joints
             tvs = qs.valids
-            g_kps = qs.global_joints
+            g_kps = np.transpose(tkps) #becuz light track joints is global already
             
             # draw bbox
             c_code = (0,255,0)
@@ -224,7 +228,6 @@ while True:
     #Waits for a user input to quit the application    
     if cv2.waitKey(1) & 0xFF == ord('q'):    
         break
-
 
 cap.release()
 cv2.destroyAllWindows()

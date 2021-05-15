@@ -9,3 +9,15 @@ flow-track/output/
 flow-track/test_img/
 flow-track/model/
 flow-track/live_imgs/
+flow-track/live_output_ft.zip
+
+light-track/*.onnx
+light-track/*.trt
+light-track/*.mp4
+light-track/__pycache__
+light-track/yolo/
+light-track/input/
+light-track/live_imgs/
+light-track/output_lt.zip
+light-track/output_lt/
+
