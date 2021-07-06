@@ -508,3 +508,19 @@ def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 	out.release()
 
 # ---------------------------------------------------------------------------------------------------------------------------
+
+
+def predict_open(batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf):
+    cuda.memcpy_htod_async(d_input2,batch,stream2)
+
+    context2.execute_async_v2(bindings2,stream2.handle,None)
+
+    cuda.memcpy_dtoh_async(output2fff, d_output2fff, stream2)
+    cuda.memcpy_dtoh_async(output2bm, d_output2bm, stream2)
+    cuda.memcpy_dtoh_async(output2paf, d_output2paf, stream2)
+
+    stream2.synchronize()
+
+    return [output2fff,output2bm,output2fff]
+
+# ---------------------------------------------------------------------------------------------------------------------------
