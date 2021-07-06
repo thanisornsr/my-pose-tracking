@@ -21,3 +21,13 @@ light-track/live_imgs/
 light-track/output_lt.zip
 light-track/output_lt/
 
+joint-flow/*.onnx
+joint-flow/*.trt
+joint-flow/*.mp4
+joint-flow/__pycache__
+joint-flow/input/
+joint-flow/live_imgs/
+joint-flow/output_lt.zip
+joint-flow/output_lt/
+
+
