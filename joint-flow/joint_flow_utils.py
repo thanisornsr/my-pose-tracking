@@ -432,9 +432,12 @@ def joint_flow_pipeline(input_pose_id,input_img0,input_img1,input_poses0,context
 	return output_poses, output_pose_id
 
 # ---------------------------------------------------------------------------------------------------------------------------
-def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
-	for filename in sorted(glob.glob('./*.mp4')):
+def clear_output_folder(output_dir):
+	for filename in sorted(glob.glob(output_dir+'/*.mp4')):
 		os.remove(filename)
+	print('Output folder cleared')
+# ---------------------------------------------------------------------------------------------------------------------------
+def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 	img_array = []
 	ori_array = []
 	frame_count = 0
@@ -501,12 +504,13 @@ def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 		img_array.append(img)
 		frame_count = frame_count + 1
 
-	out = cv2.VideoWriter('original.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 15, img_size)
-	for i in range(len(ori_array)):
-		out.write(ori_array[i])
-	out.release()
+	# out = cv2.VideoWriter('original.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 15, img_size)
+	# for i in range(len(ori_array)):
+	# 	out.write(ori_array[i])
+	# out.release()
+	four_cc = cv2.VideoWriter_fourcc(*'mp4v')
 
-	out = cv2.VideoWriter('output.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 15, img_size)
+	out = cv2.VideoWriter('output.mp4',four_cc, 15, img_size)
 	for i in range(len(img_array)):
 		out.write(img_array[i])
 	out.release()

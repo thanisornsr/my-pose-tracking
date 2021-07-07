@@ -35,38 +35,6 @@ n_limbs = 16
 
 USE_FP16 = False # USE FP32
 
-# def predict_TFF(batch0,batch1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1):
-#     cuda.memcpy_htod_async(d_input30,batch0,stream2)
-#     cuda.memcpy_htod_async(d_input31,batch1,stream2)
-
-#     context3.execute_async_v2(bindings3,stream3.handle,None)
-
-#     cuda.memcpy_dtoh_async(output3tff, d_output3tff, stream3)
-#     cuda.memcpy_dtoh_async(output3bm0, d_output3bm0, stream3)
-#     cuda.memcpy_dtoh_async(output3bm1, d_output3bm1, stream3)
-#     cuda.memcpy_dtoh_async(output3paf0, d_output3paf0, stream3)
-#     cuda.memcpy_dtoh_async(output3paf1, d_output3paf1, stream3)
-    
-
-#     stream3.synchronize()
-
-#     return [output3tff,output3bm0,output3bm1,output3paf0,output3paf1]
-
-# def predict_open(batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf):
-#     cuda.memcpy_htod_async(d_input2,batch,stream2)
-
-#     context2.execute_async_v2(bindings2,stream2.handle,None)
-
-#     cuda.memcpy_dtoh_async(output2fff, d_output2fff, stream2)
-#     cuda.memcpy_dtoh_async(output2bm, d_output2bm, stream2)
-#     cuda.memcpy_dtoh_async(output2paf, d_output2paf, stream2)
-
-#     stream2.synchronize()
-
-#     return [output2fff,output2bm,output2fff]
-
-
-
 # build openpose
 print('Generating Openpose: ...')
 
@@ -136,3 +104,8 @@ print('Processing frames: ...')
 Q,processing_times = joint_flow_from_dir(a.input_dir,input_shape,output_shape,dummy_input_batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf,dummy_input_batch0,dummy_input_batch1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
 
 print('Processing frames: done')
+
+print('Creating video: ...')
+clear_output_folder('.')
+make_vid_from_dict_joint_flow(a.input_dir,processing_times,Q) 
+print('Creating video: done')
