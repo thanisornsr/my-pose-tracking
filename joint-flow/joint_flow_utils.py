@@ -3,6 +3,10 @@ import glob
 import numpy as np
 import os, json, cv2, random, math
 
+import scipy 
+import scipy.ndimage as ndimage
+import scipy.ndimage.filters as filters
+
 from skimage.transform import resize
 from timeit import default_timer as timer
 
@@ -397,8 +401,8 @@ def convert_kps_to_global(input_poses,img_w,img_h,output_shape = (46,46)):
 
 def joint_flow_pipeline_first_frame(input_pose_id,input_img,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf):
 	prediction = predict_open(input_img,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf)
-	p_bms = prediction[1].numpy()
-	p_pafs = prediction[2].numpy()
+	p_bms = prediction[1]
+	p_pafs = prediction[2]
 
 	p_bm = p_bms[0,:,:,:]
 	p_paf = p_pafs[0,:,:,:]
@@ -413,9 +417,9 @@ def joint_flow_pipeline_first_frame(input_pose_id,input_img,context2,bindings2,d
 # ---------------------------------------------------------------------------------------------------------------------------
 def joint_flow_pipeline(input_pose_id,input_img0,input_img1,input_poses0,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1):
 	prediction = predict_TFF(input_img0,input_img1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
-	p_TFF = (prediction[0].numpy())[0,:,:,:]
-	p_bm1 = (prediction[2].numpy())[0,:,:,:]
-	p_paf1 = (prediction[4].numpy())[0,:,:,:]
+	p_TFF = prediction[0][0,:,:,:]
+	p_bm1 = prediction[2][0,:,:,:]
+	p_paf1 = prediction[4][0,:,:,:]
 
 	p_peaks1 = get_peak_dict(p_bm1)
 	p_score_dict1 = get_score_mat_dict(p_peaks1,p_paf1)
@@ -522,8 +526,8 @@ def predict_open(batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_ou
     return [output2fff,output2bm,output2fff]
 
 def predict_TFF(batch0,batch1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1):
-	cuda.memcpy_htod_async(d_input30,batch0,stream2)
-	cuda.memcpy_htod_async(d_input31,batch1,stream2)
+	cuda.memcpy_htod_async(d_input30,batch0,stream3)
+	cuda.memcpy_htod_async(d_input31,batch1,stream3)
 
 	context3.execute_async_v2(bindings3,stream3.handle,None)
 	cuda.memcpy_dtoh_async(output3tff, d_output3tff, stream3)
@@ -551,6 +555,10 @@ def joint_flow_from_dir(images_dir,input_shape,output_shape,dummy_input_batch,co
 		img = img / 255.0
 
 		img = np.reshape(resize(img,input_shape),(1,*input_shape,-1))
+		
+		img = img.astype(np.float32)
+		# print(img.shape)
+		# print(img.dtype)
 		if frame_id == 0:
 			poses,pose_id = joint_flow_pipeline_first_frame(pose_id,img,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf)
 			poses = set_valid_to_poses(poses)
@@ -563,7 +571,7 @@ def joint_flow_from_dir(images_dir,input_shape,output_shape,dummy_input_batch,co
 			processing_times[frame_id] = end - start
 			frame_id = frame_id + 1
 		else:
-			poses,pose_id = joint_flow_pipeline(JF_model,pose_id,img0,img,poses0,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
+			poses,pose_id = joint_flow_pipeline(pose_id,img0,img,poses0,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
 			poses = set_valid_to_poses(poses)
 			poses = convert_kps_to_global(poses,img_w,img_h)
 
@@ -575,3 +583,5 @@ def joint_flow_from_dir(images_dir,input_shape,output_shape,dummy_input_batch,co
 			frame_id = frame_id + 1
 
 	return Q,processing_times
+
+# ---------------------------------------------------------------------------------------------------------------------------
