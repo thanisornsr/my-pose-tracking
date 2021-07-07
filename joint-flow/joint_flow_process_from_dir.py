@@ -130,3 +130,9 @@ print('Warming up ...') # To modify
 prediction0 = predict_open(dummy_input_batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf)
 prediction = predict_TFF(dummy_input_batch0,dummy_input_batch1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
 print('Done Warming up!')
+
+print('Processing frames: ...')
+
+Q,processing_times = joint_flow_from_dir(a.input_dir,input_shape,output_shape,dummy_input_batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf,dummy_input_batch0,dummy_input_batch1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
+
+print('Processing frames: done')
