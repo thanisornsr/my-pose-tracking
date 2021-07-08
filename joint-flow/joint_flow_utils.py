@@ -399,10 +399,11 @@ def convert_kps_to_global(input_poses,img_w,img_h,output_shape = (46,46)):
 
 # ---------------------------------------------------------------------------------------------------------------------------
 
-def joint_flow_pipeline_first_frame(input_pose_id,input_img,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf):
-	prediction = predict_open(input_img,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf)
-	p_bms = prediction[1]
-	p_pafs = prediction[2]
+def joint_flow_pipeline_first_frame(input_pose_id,input_img,context2,bindings2,d_input2,d_output2,stream2,output2):
+	prediction = predict_open(input_img,context2,bindings2,d_input2,d_output2,stream2,output2)
+
+	p_bms = prediction[:,:,:,128:143]
+	p_pafs = prediction[:,:,:,143:]
 
 	p_bm = p_bms[0,:,:,:]
 	p_paf = p_pafs[0,:,:,:]
@@ -415,11 +416,12 @@ def joint_flow_pipeline_first_frame(input_pose_id,input_img,context2,bindings2,d
 
 	return p_cleaned_output_poses, output_pose_id
 # ---------------------------------------------------------------------------------------------------------------------------
-def joint_flow_pipeline(input_pose_id,input_img0,input_img1,input_poses0,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1):
-	prediction = predict_TFF(input_img0,input_img1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
-	p_TFF = prediction[0][0,:,:,:]
-	p_bm1 = prediction[2][0,:,:,:]
-	p_paf1 = prediction[4][0,:,:,:]
+def joint_flow_pipeline(input_pose_id,input_img0,input_img1,input_poses0,context3,bindings3,d_input3,d_output3,stream3,output3):
+	inp_batch = np.concatenate((input_img0,input_img1),axis=-1)
+	prediction = predict_TFF(inp_batch,context3,bindings3,d_input3,d_output3,stream3,output3)
+	p_TFF = prediction[0,:,:,0:30]
+	p_bm1 = prediction[0,:,:,45:60]
+	p_paf1 = prediction[0,:,:,92:]
 
 	p_peaks1 = get_peak_dict(p_bm1)
 	p_score_dict1 = get_score_mat_dict(p_peaks1,p_paf1)
@@ -516,34 +518,31 @@ def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 	out.release()
 
 # ---------------------------------------------------------------------------------------------------------------------------
-def predict_open(batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf):
+def predict_open(batch,context2,bindings2,d_input2,d_output2,stream2,output2):
     cuda.memcpy_htod_async(d_input2,batch,stream2)
-
     context2.execute_async_v2(bindings2,stream2.handle,None)
-
     cuda.memcpy_dtoh_async(output2fff, d_output2fff, stream2)
-    cuda.memcpy_dtoh_async(output2bm, d_output2bm, stream2)
-    cuda.memcpy_dtoh_async(output2paf, d_output2paf, stream2)
+    # cuda.memcpy_dtoh_async(output2bm, d_output2bm, stream2)
+    # cuda.memcpy_dtoh_async(output2paf, d_output2paf, stream2)
 
     stream2.synchronize()
 
-    return [output2fff,output2bm,output2fff]
+    return output2
 
-def predict_TFF(batch0,batch1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1):
-	cuda.memcpy_htod_async(d_input30,batch0,stream3)
-	cuda.memcpy_htod_async(d_input31,batch1,stream3)
-
+def predict_TFF(batch0,context3,bindings3,d_input3,d_output3,stream3,output3):
+	cuda.memcpy_htod_async(d_input3,batch0,stream3)
+	# cuda.memcpy_htod_async(d_input31,batch1,stream3)
 	context3.execute_async_v2(bindings3,stream3.handle,None)
-	cuda.memcpy_dtoh_async(output3tff, d_output3tff, stream3)
-	cuda.memcpy_dtoh_async(output3bm0, d_output3bm0, stream3)
-	cuda.memcpy_dtoh_async(output3bm1, d_output3bm1, stream3)
-	cuda.memcpy_dtoh_async(output3paf0, d_output3paf0, stream3)
-	cuda.memcpy_dtoh_async(output3paf1, d_output3paf1, stream3)
+	cuda.memcpy_dtoh_async(output3, d_output3, stream3)
+	# cuda.memcpy_dtoh_async(output3bm0, d_output3bm0, stream3)
+	# cuda.memcpy_dtoh_async(output3bm1, d_output3bm1, stream3)
+	# cuda.memcpy_dtoh_async(output3paf0, d_output3paf0, stream3)
+	# cuda.memcpy_dtoh_async(output3paf1, d_output3paf1, stream3)
 	stream3.synchronize()
-	return [output3tff,output3bm0,output3bm1,output3paf0,output3paf1]
+	return output3
 # ---------------------------------------------------------------------------------------------------------------------------
 
-def joint_flow_from_dir(images_dir,input_shape,output_shape,dummy_input_batch,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf,dummy_input_batch0,dummy_input_batch1,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1):
+def joint_flow_from_dir(images_dir,input_shape,output_shape,context2,bindings2,d_input2,d_output2,stream2,output2,context3,bindings3,d_input3,d_output3,stream3,output3):
 	Q = {}
 	processing_times = {}
 	frame_id = 0
@@ -564,7 +563,7 @@ def joint_flow_from_dir(images_dir,input_shape,output_shape,dummy_input_batch,co
 		# print(img.shape)
 		# print(img.dtype)
 		if frame_id == 0:
-			poses,pose_id = joint_flow_pipeline_first_frame(pose_id,img,context2,bindings2,d_input2,d_output2fff,d_output2bm,d_output2paf,stream2,output2fff,output2bm,output2paf)
+			poses,pose_id = joint_flow_pipeline_first_frame(pose_id,img,context2,bindings2,d_input2,d_output2,stream2,output2)
 			poses = set_valid_to_poses(poses)
 			poses = convert_kps_to_global(poses,img_w,img_h)
 
@@ -575,7 +574,7 @@ def joint_flow_from_dir(images_dir,input_shape,output_shape,dummy_input_batch,co
 			processing_times[frame_id] = end - start
 			frame_id = frame_id + 1
 		else:
-			poses,pose_id = joint_flow_pipeline(pose_id,img0,img,poses0,context3,bindings3,d_input30,d_input31,d_output3tff,d_output3bm0,d_output3bm1,d_output3paf0,d_output3paf1,stream3,output3tff,output3bm0,output3bm1,output3paf0,output3paf1)
+			poses,pose_id = joint_flow_pipeline(pose_id,img0,img,poses0,context3,bindings3,d_input3,d_output3,stream3,output3)
 			poses = set_valid_to_poses(poses)
 			poses = convert_kps_to_global(poses,img_w,img_h)
 
