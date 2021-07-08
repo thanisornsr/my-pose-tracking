@@ -110,5 +110,5 @@ print('Processing frames: done')
 
 print('Creating video: ...')
 clear_output_folder('.')
-make_vid_from_dict_joint_flow(a.input_dir,processing_times,Q) 
+make_vid_from_dict_joint_flow(Q,processing_times,a.input_dir) 
 print('Creating video: done')

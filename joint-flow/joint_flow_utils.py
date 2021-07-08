@@ -408,6 +408,14 @@ def joint_flow_pipeline_first_frame(input_pose_id,input_img,context2,bindings2,d
 	p_bm = p_bms[0,:,:,:]
 	p_paf = p_pafs[0,:,:,:]
 
+	# cv2.imshow('test',p_bm[:,:,0])
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
+
+	# cv2.imshow('test',p_paf[:,:,0])
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
+
 	p_peaks = get_peak_dict(p_bm)
 	p_score_dict = get_score_mat_dict(p_peaks,p_paf)
 	p_limb_dict = get_limb_dict(p_score_dict,p_peaks)
@@ -422,6 +430,18 @@ def joint_flow_pipeline(input_pose_id,input_img0,input_img1,input_poses0,context
 	p_TFF = prediction[0,:,:,0:30]
 	p_bm1 = prediction[0,:,:,45:60]
 	p_paf1 = prediction[0,:,:,92:]
+
+	# cv2.imshow('test',p_TFF[:,:,0])
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
+
+	# cv2.imshow('test',p_bm1[:,:,0])
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
+
+	# cv2.imshow('test',p_paf1[:,:,0])
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
 
 	p_peaks1 = get_peak_dict(p_bm1)
 	p_score_dict1 = get_score_mat_dict(p_peaks1,p_paf1)
@@ -521,7 +541,7 @@ def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 def predict_open(batch,context2,bindings2,d_input2,d_output2,stream2,output2):
     cuda.memcpy_htod_async(d_input2,batch,stream2)
     context2.execute_async_v2(bindings2,stream2.handle,None)
-    cuda.memcpy_dtoh_async(output2fff, d_output2fff, stream2)
+    cuda.memcpy_dtoh_async(output2, d_output2, stream2)
     # cuda.memcpy_dtoh_async(output2bm, d_output2bm, stream2)
     # cuda.memcpy_dtoh_async(output2paf, d_output2paf, stream2)
 
@@ -584,6 +604,7 @@ def joint_flow_from_dir(images_dir,input_shape,output_shape,context2,bindings2,d
 			end = timer()
 			processing_times[frame_id] = end - start
 			frame_id = frame_id + 1
+			# break
 
 	return Q,processing_times
 

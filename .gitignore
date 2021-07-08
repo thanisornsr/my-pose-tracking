@@ -27,7 +27,7 @@ joint-flow/*.mp4
 joint-flow/__pycache__
 joint-flow/input/
 joint-flow/live_imgs/
-joint-flow/output_lt.zip
-joint-flow/output_lt/
+joint-flow/output_jf.zip
+joint-flow/output_jf/
 
 
