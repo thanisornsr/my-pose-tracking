@@ -470,3 +470,40 @@ def make_video_flow_track(input_images_dir,input_processing_times,input_Q):
 	out.release()
 
 	#print('Done creating output video')
+
+def write_processing_times_JSON(processing_times,filename):
+	pt = {}
+	for i in range(len(processing_times)):
+		pt[i] = processing_times[i]
+	with open(filename,'w') as outfile:
+		json.dump(pt,outfile)
+
+def write_Q_JSON(Q,filename):
+	data = []
+	for q in Q:
+		temp_kp = q.global_joints
+		temp_v = q.valids
+		temp_id = q.id
+		temp_bbox = q.bbox
+		temp_frame_id = q.frame
+
+		temp_kps = []
+		for i in range(len(temp_v)):
+			temp_kps.append(temp_kp[i,0])
+			temp_kps.append(temp_kp[i,1])
+			temp_kps.append(temp_v[i])
+		temp = {}
+		temp['frame_id'] = temp_frame_id
+		temp['track_id'] = temp_id
+		temp['bbox'] = temp_bbox
+		temp['keypoints'] = temp_kps
+
+		data.append(temp)
+	with open(filename,'w') as outfile:
+		json.dump(data,outfile)
+
+
+
+
+
+

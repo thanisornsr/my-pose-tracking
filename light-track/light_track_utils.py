@@ -540,3 +540,35 @@ def make_video_light_track(input_images_dir,input_processing_times,input_Q):
 	for i in range(len(img_array)):
 		out.write(img_array[i])
 	out.release()
+
+def write_processing_times_JSON(processing_times,filename):
+	pt = {}
+	for i in range(len(processing_times)):
+		pt[i] = processing_times[i]
+	with open(filename,'w') as outfile:
+		json.dump(pt,outfile)
+
+def write_Q_JSON(Q,filename):
+	data = []
+	for qf in Q: 
+		for q in qf:
+			temp_kp = np.transpose(q.joints)
+			temp_v = q.valids
+			temp_id = q.id
+			temp_bbox = q.bbox
+			temp_frame_id = q.frame
+
+			temp_kps = []
+			for i in range(len(temp_v)):
+				temp_kps.append(temp_kp[i,0])
+				temp_kps.append(temp_kp[i,1])
+				temp_kps.append(temp_v[i])
+			temp = {}
+			temp['frame_id'] = temp_frame_id
+			temp['track_id'] = temp_id
+			temp['bbox'] = temp_bbox
+			temp['keypoints'] = temp_kps
+
+			data.append(temp)
+	with open(filename,'w') as outfile:
+		json.dump(data,outfile)

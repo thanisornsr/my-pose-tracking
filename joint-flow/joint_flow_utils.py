@@ -609,3 +609,38 @@ def joint_flow_from_dir(images_dir,input_shape,output_shape,context2,bindings2,d
 	return Q,processing_times
 
 # ---------------------------------------------------------------------------------------------------------------------------
+
+def write_processing_times_JSON_JF(processing_times,filename):
+	pt = {}
+	for frame_num in processing_times.keys():
+		pt[frame_num] = processing_times[frame_num]
+	with open(filename,'w') as outfile:
+		json.dump(pt,outfile)
+
+# ---------------------------------------------------------------------------------------------------------------------------
+
+def write_Q_JSON_JF(Q,filename):
+	data = []
+	for frame_num in Q:
+		for q in Q[frame_num]:
+			temp_kp = q.global_joints
+			temp_v = q.valids
+			temp_id = q.id
+			temp_bbox = q.bbox
+			temp_frame_id = frame_num
+
+			temp_kps = []
+			for i in range(len(temp_v)):
+				tempy,tempx = temp_kp[i]
+				temp_kps.append(tempx)
+				temp_kps.append(tempy)
+				temp_kps.append(temp_v[i])
+			temp = {}
+			temp['frame_id'] = temp_frame_id
+			temp['track_id'] = temp_id
+			temp['bbox'] = temp_bbox
+			temp['keypoints'] = temp_kps
+
+			data.append(temp)
+	with open(filename,'w') as outfile:
+		json.dump(data,outfile)
