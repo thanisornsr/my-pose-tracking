@@ -108,7 +108,13 @@ Q,processing_times = joint_flow_from_dir(a.input_dir,input_shape,output_shape,co
 
 print('Processing frames: done')
 
-print('Creating video: ...')
-clear_output_folder('.')
-make_vid_from_dict_joint_flow(Q,processing_times,a.input_dir) 
-print('Creating video: done')
+# print('Creating video: ...')
+# clear_output_folder('.')
+# make_vid_from_dict_joint_flow(Q,processing_times,a.input_dir) 
+# print('Creating video: done')
+
+
+print('Creating JSON: ...')
+write_processing_times_JSON_JF(processing_times,'JF_processing_time.json')
+write_Q_JSON_JF(Q,'JF_Q.json')
+print('Creating JSON: done')

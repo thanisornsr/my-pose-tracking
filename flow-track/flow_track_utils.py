@@ -489,9 +489,14 @@ def write_Q_JSON(Q,filename):
 
 		temp_kps = []
 		for i in range(len(temp_v)):
-			temp_kps.append(temp_kp[i,0])
-			temp_kps.append(temp_kp[i,1])
-			temp_kps.append(temp_v[i])
+			if int(temp_v[i]) == 0:
+				temp_kps.append(0)
+				temp_kps.append(0)
+			else:
+				temp_kps.append(int(temp_kp[i,0]))
+				temp_kps.append(int(temp_kp[i,1]))
+			temp_kps.append(int(temp_v[i]))
+		# print(temp_kps)
 		temp = {}
 		temp['frame_id'] = temp_frame_id
 		temp['track_id'] = temp_id

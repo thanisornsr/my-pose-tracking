@@ -3,6 +3,7 @@ import numpy as np
 import os, json, cv2, random, math
 
 from skimage.transform import resize
+from skimage.color import rgb2gray
 from timeit import default_timer as timer 
 
 import tensorrt as trt 
@@ -49,7 +50,7 @@ def img_to_bboxes(img_o,predictor,img_h,img_w):
 
 	boxes = boxes.tolist()
 
-	n_ints = len(temp_ints)
+	n_ints = len(boxes)
 
 	out_bboxes = []
 	bboxes = boxes
@@ -98,7 +99,7 @@ def heatmaps_to_joints(i_heatmaps):
 	o_J = []
 	valid_thres = 15
 	o_V = []
-	n_h = p_heatmaps.shape[0]
+	n_h = i_heatmaps.shape[0]
 	for k in range(n_h):
 		temp_heatmap = i_heatmaps[k,:,:,:]
 		tkp_x = []
@@ -118,15 +119,19 @@ def heatmaps_to_joints(i_heatmaps):
 			tkp_x.append(tx)
 			tkp_y.append(ty)
 			tvs.append(tv)
+		# print(tkp_x)
+		# print(tkp_y)
+		# print(tvs)
 
 		tkp = [tkp_x,tkp_y]
 		tkp = np.asarray(tkp)
 		tvs = np.asarray(tvs)
 		o_J.append(tkp)
 		o_V.append(tvs)
+		
 	return o_J,o_V
 
-def get_global_joints(input_bbox,input_joints,output_shape = output_shape):
+def get_global_joints(input_bbox,input_joints,output_shape = (64,48)):
 	scale_x = input_bbox[2]/output_shape[1]
 	scale_y = input_bbox[3]/output_shape[0]
 	o_scale = np.array([scale_x,scale_y])
@@ -143,8 +148,8 @@ def get_global_joints(input_bbox,input_joints,output_shape = output_shape):
 
 def get_face_from_joints(gray_img,input_joint,head_to_width_ratio = 0.5):
 	if input_joint[0,0] == 0 and input_joint[0,1] == 0:
-		print(input_joint)
-		print('No head detected')
+		# print(input_joint)
+		# print('No head detected')
 		pass
 
 	ih,iw,_ = gray_img.shape
@@ -191,7 +196,7 @@ def get_id_to_assign(input_pose_id,input2_ori_Q,input2_Ji,get_id_sim_mat,current
 	can_new_id = list(range(input_nh))
 	id_to_assign = np.full([1,input_nh],None)
 
-	max_score_th = 0.2
+	max_score_th = 0.1
 	while len(can_old_id)>0 and len(can_new_id)>0:
 		max_score = np.amax(get_id_sim_mat)
 		if max_score < max_score_th:
@@ -224,15 +229,15 @@ def get_id_to_assign(input_pose_id,input2_ori_Q,input2_Ji,get_id_sim_mat,current
 
 def predict(batch,context2,bindings2,d_input2,d_output2,stream2,output2):
 	cuda.memcpy_htod_async(d_input2,batch,stream2)
-
-    context2.execute_async_v2(bindings2,stream2.handle,None)
-
-    cuda.memcpy_dtoh_async(output2, d_output2, stream2)
-
-    stream2.synchronize()
-
-    return output2
-
+	
+	context2.execute_async_v2(bindings2,stream2.handle,None)
+	
+	cuda.memcpy_dtoh_async(output2, d_output2, stream2)
+	
+	stream2.synchronize()
+	
+	return output2
+	
 def predictFS(batch3,context3,bindings3,d_input3,d_output3,stream3,output3):
     cuda.memcpy_htod_async(d_input3,batch3,stream3)
 
@@ -256,7 +261,7 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 		img = cv2.imread(filename)
 		img_h,img_w,_ = img.shape
 
-		temp_bboxes = img_to_bboxes(img,hdetector,input_shape,img_h,img_w)
+		temp_bboxes = img_to_bboxes(img,hdetector,img_h,img_w)
 		img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 		img = img / 255.0
 
@@ -294,7 +299,9 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 				temp_v = temp_Vi[j]
 				temp_gj = get_global_joints(temp_bbox,temp_j)
 				#get face
-				fimg = batch_imgs[j,:,:,:]
+
+				fimg = batch_imgs[j]
+				# print(fimg.shape)
 				temp_joints = joints_input_size[j]
 				tjoints = np.transpose(temp_joints.copy())
 				gimg = rgb2gray(fimg)
@@ -313,7 +320,7 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 			#get faces
 			faces = []
 			for j in range(len(temp_Ji)):
-				fimg = batch_imgs[j,:,:,:]
+				fimg = batch_imgs[j]
 				temp_joints = joints_input_size[j]
 				tjoints = np.transpose(temp_joints.copy())
 				gimg = rgb2gray(fimg)
@@ -361,7 +368,7 @@ def clear_output_folder(output_dir):
 		os.remove(filename)
 	print('Output folder cleared')
 
-def make_video_own_track(input_images_dir,input_processing_times,input_Q):
+def make_video_own_track(input_images_dir,input_processing_times,Q):
 	img_array = []
 	ori_array = []
 	avg_time = np.mean(input_processing_times)
@@ -441,14 +448,14 @@ def make_video_own_track(input_images_dir,input_processing_times,input_Q):
 		out.write(img_array[i])
 	out.release()
 
-def write_processing_times_JSON_LT(processing_times,filename):
+def write_processing_times_JSON_OT(processing_times,filename):
 	pt = {}
 	for i in range(len(processing_times)):
 		pt[i] = processing_times[i]
 	with open(filename,'w') as outfile:
 		json.dump(pt,outfile)
 
-def write_Q_JSON_LT(Q,filename):
+def write_Q_JSON_OT(Q,filename):
 	data = []
 	for qf in Q: 
 		for q in qf:
@@ -460,9 +467,13 @@ def write_Q_JSON_LT(Q,filename):
 
 			temp_kps = []
 			for i in range(len(temp_v)):
-				temp_kps.append(temp_kp[i,0])
-				temp_kps.append(temp_kp[i,1])
-				temp_kps.append(temp_v[i])
+				if int(temp_v[i]) == 0:
+					temp_kps.append(0)
+					temp_kps.append(0)
+				else:
+					temp_kps.append(int(temp_kp[i,0]))
+					temp_kps.append(int(temp_kp[i,1]))
+				temp_kps.append(int(temp_v[i]))
 			temp = {}
 			temp['frame_id'] = temp_frame_id
 			temp['track_id'] = temp_id

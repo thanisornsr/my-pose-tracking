@@ -628,13 +628,20 @@ def write_Q_JSON_JF(Q,filename):
 			temp_id = q.id
 			temp_bbox = q.bbox
 			temp_frame_id = frame_num
-
+			# print(temp_kp)
+			joint_idx = list(q.global_joints.keys())
 			temp_kps = []
 			for i in range(len(temp_v)):
-				tempy,tempx = temp_kp[i]
-				temp_kps.append(tempx)
-				temp_kps.append(tempy)
-				temp_kps.append(temp_v[i])
+				if i in joint_idx:
+					tempy,tempx = temp_kp[i]
+				else:
+					tempx = 0
+					tempy = 0
+				# print(temp_kp[i])
+				# break
+				temp_kps.append(int(tempx))
+				temp_kps.append(int(tempy))
+				temp_kps.append(int(temp_v[i]))
 			temp = {}
 			temp['frame_id'] = temp_frame_id
 			temp['track_id'] = temp_id

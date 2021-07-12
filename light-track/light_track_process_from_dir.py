@@ -78,8 +78,12 @@ Q,processing_times = light_track_from_dir(a.input_dir,trt_yolo,context2,bindings
 
 print('Processing frames: done')
 
-print('Creating video: ...')
-clear_output_folder('.')
-make_video_light_track(a.input_dir,processing_times,Q) 
-print('Creating video: done')
+# print('Creating video: ...')
+# clear_output_folder('.')
+# make_video_light_track(a.input_dir,processing_times,Q) 
+# print('Creating video: done')
 
+print('Creating JSON: ...')
+write_processing_times_JSON(processing_times,'LT_processing_time.json')
+write_Q_JSON(Q,'LT_Q.json')
+print('Creating JSON: done')

@@ -33,7 +33,8 @@ yolo_model = 'yolov4-416'
 BATCH_SIZE = 1
 USE_FP16 = False # USE FP32
 input_shape = (256,192)
-FS_input_shape = ()
+output_shape = (64,48)
+FS_input_shape = (64,64)
 
 # build human detector
 print('Generating human detector: ...')
@@ -85,16 +86,21 @@ img = cv2.imread(temp_file_list[0])
 prediction = predict(dummy_input_batch,context2,bindings2,d_input2,d_output2,stream2,output2)
 score = predictFS(dummy_input_batch3,context3,bindings3,d_input3,d_output3,stream3,output3)
 boxes, confs, clss = trt_yolo.detect(img,conf_th)
-
+# print(score)
 print('Done Warming up!')
 
 
-# # run flow_track_from_dir
-# print('Processing frames: ...')
-# Q,processing_times = own_track_from_dir(a.input_dir,trt_yolo,context2,bindings2,d_input2,d_output2,stream2,output2,input_shape,context3,bindings3,d_input3,d_output3,stream3,output3)
-# print('Processing frames: done')
+# run flow_track_from_dir
+print('Processing frames: ...')
+Q,processing_times = own_track_from_dir(a.input_dir,trt_yolo,context2,bindings2,d_input2,d_output2,stream2,output2,input_shape,context3,bindings3,d_input3,d_output3,stream3,output3)
+print('Processing frames: done')
 
 # print('Creating video: ...')
 # clear_output_folder('.')
 # make_video_own_track(a.input_dir,processing_times,Q) 
 # print('Creating video: done')
+
+print('Creating JSON: ...')
+write_processing_times_JSON_OT(processing_times,'OT_processing_time.json')
+write_Q_JSON_OT(Q,'OT_Q.json')
+print('Creating JSON: done')

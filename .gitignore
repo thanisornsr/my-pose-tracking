@@ -30,4 +30,14 @@ joint-flow/live_imgs/
 joint-flow/output_jf.zip
 joint-flow/output_jf/
 
+own-track/*.onnx
+own-track/*.trt
+own-track/*.mp4
+own-track/__pycache__
+own-track/yolo/
+own-track/input/
+own-track/output_ot/*.mp4
+own-track/live_imgs/
+own-track/live_output_ot.zip
+
 
