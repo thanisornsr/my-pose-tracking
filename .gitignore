@@ -10,6 +10,8 @@ flow-track/test_img/
 flow-track/model/
 flow-track/live_imgs/
 flow-track/live_output_ft.zip
+flow-track/my_input
+flow-track/my_output
 
 light-track/*.onnx
 light-track/*.trt
@@ -20,6 +22,8 @@ light-track/input/
 light-track/live_imgs/
 light-track/output_lt.zip
 light-track/output_lt/
+light-track/my_input
+light-track/my_output
 
 joint-flow/*.onnx
 joint-flow/*.trt
@@ -29,6 +33,8 @@ joint-flow/input/
 joint-flow/live_imgs/
 joint-flow/output_jf.zip
 joint-flow/output_jf/
+joint-flow/my_input
+joint-flow/my_output
 
 own-track/*.onnx
 own-track/*.trt
@@ -39,5 +45,7 @@ own-track/input/
 own-track/output_ot/*.mp4
 own-track/live_imgs/
 own-track/live_output_ot.zip
+own-track/my_input
+own-track/my_output
 
 
