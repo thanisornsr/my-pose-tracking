@@ -35,6 +35,7 @@ USE_FP16 = False # USE FP32
 input_shape = (256,192)
 output_shape = (64,48)
 FS_input_shape = (64,64)
+argument_list = a.input_dir.split('/')
 
 # build human detector
 print('Generating human detector: ...')
@@ -90,17 +91,21 @@ boxes, confs, clss = trt_yolo.detect(img,conf_th)
 print('Done Warming up!')
 
 
+
 # run flow_track_from_dir
 print('Processing frames: ...')
 Q,processing_times = own_track_from_dir(a.input_dir,trt_yolo,context2,bindings2,d_input2,d_output2,stream2,output2,input_shape,context3,bindings3,d_input3,d_output3,stream3,output3)
 print('Processing frames: done')
 
-# print('Creating video: ...')
+# release memory
+del trt_yolo,f2,runtime2,engine2,context2,output2,d_input2,d_output2,bindings2,stream2,f3,runtime3,engine3,context3,output3,d_input3, d_output3,bindings3,stream3
+
+print('Creating video: ...')
 # clear_output_folder('.')
-# make_video_own_track(a.input_dir,processing_times,Q) 
-# print('Creating video: done')
+make_video_own_track(a.input_dir,processing_times,Q,'OT_'+argument_list[2]+'_'+argument_list[3]+'_output.mp4') 
+print('Creating video: done')
 
 print('Creating JSON: ...')
-write_processing_times_JSON_OT(processing_times,'OT_processing_time.json')
-write_Q_JSON_OT(Q,'OT_Q.json')
+write_processing_times_JSON_OT(processing_times,'OT_'+argument_list[2]+'_'+argument_list[3]+'_processing_time.json')
+write_Q_JSON_OT(Q,'OT_'+argument_list[2]+'_'+argument_list[3]+'_Q.json')
 print('Creating JSON: done')

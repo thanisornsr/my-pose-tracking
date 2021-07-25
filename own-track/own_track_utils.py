@@ -147,40 +147,69 @@ def get_global_joints(input_bbox,input_joints,output_shape = (64,48)):
 	return g_kps
 
 def get_face_from_joints(gray_img,input_joint,head_to_width_ratio = 0.5):
+	no_head = False
 	if input_joint[0,0] == 0 and input_joint[0,1] == 0:
 		# print(input_joint)
 		# print('No head detected')
-		pass
+		if input_joint[1,0] != 0 and input_joint[1,1] != 0 and input_joint[2,0] != 0 and input_joint[2,1] != 0:
+			# found both ear
+			c_x = (input_joint[1,0] + input_joint[2,0]) / 2
+			c_y = (input_joint[1,1] + input_joint[2,1]) / 2
+		else:
+			if input_joint[1,0] != 0 and input_joint[1,1] != 0:
+				#found l ear
+				c_x = input_joint[1,0]
+				c_y = input_joint[1,1]
 
-	ih,iw,_ = gray_img.shape
-	# c: center of head
-	c_x = input_joint[0,0]
-	c_y = input_joint[0,1]
+			else:
+				if input_joint[2,0] != 0 and input_joint[2,1] != 0:
+					#found r ear
+					c_x = input_joint[2,0]
+					c_y = input_joint[2,1]
+				else:
+					# no nose and no ears found
+					# print(input_joint)
+					# print('No head detected')
+					no_head = True
 
-	head_size = head_to_width_ratio * iw
-	# print(head_size)
-	if head_size <= 0:
-		head_size = 60
+	else:
+		# nose found
+		# c: center of head
+		c_x = input_joint[0,0]
+		c_y = input_joint[0,1]
 
-	x1 = c_x - (head_size / 2)
-	x2 = c_x + (head_size / 2)
-	y1 = c_y - (head_size / 2)
-	y2 = c_y + (head_size / 2)
+	if no_head:
+		cropped = np.ones((40,40,1)).astype(np.float32)
+		# print(cropped.dtype)
 
-	if x1 < 0:
-		x1 = 0
-	if y1 < 0:
-		y1 = 0
-	if x2 >= iw:
-		x2 = iw - 1
-	if y2 >= ih:
-		y2 = ih - 1
-	if (int(x2) - int(x1)) < 1:
-		x1 = int(x2) - 1
-	if (int(y2) - int(y1)) < 1:
-		y1 = int(y2) - 1
+	else:
+		ih,iw,_ = gray_img.shape
+		head_size = head_to_width_ratio * iw
+		# print(head_size)
+		if head_size <= 0:
+			head_size = 60
 
-	cropped = gray_img[int(y1):int(y2),int(x1):int(x2),:]
+		x1 = c_x - (head_size / 2)
+		x2 = c_x + (head_size / 2)
+		y1 = c_y - (head_size / 2)
+		y2 = c_y + (head_size / 2)
+
+		if x1 < 0:
+			x1 = 0
+		if y1 < 0:
+			y1 = 0
+		if x2 >= iw:
+			x2 = iw - 1
+		if y2 >= ih:
+			y2 = ih - 1
+		if (int(x2) - int(x1)) < 1:
+			x1 = int(x2) - 1
+		if (int(y2) - int(y1)) < 1:
+			y1 = int(y2) - 1
+
+		cropped = gray_img[int(y1):int(y2),int(x1):int(x2),:]
+		# print(cropped.dtype)
+
 	return cropped
 
 def get_id_to_assign(input_pose_id,input2_ori_Q,input2_Ji,get_id_sim_mat,current_frame):
@@ -195,7 +224,9 @@ def get_id_to_assign(input_pose_id,input2_ori_Q,input2_Ji,get_id_sim_mat,current
 
 	can_new_id = list(range(input_nh))
 	id_to_assign = np.full([1,input_nh],None)
+	# print(get_id_sim_mat)
 
+	max_score_th = 0.01
 	max_score_th = 0.1
 	while len(can_old_id)>0 and len(can_new_id)>0:
 		max_score = np.amax(get_id_sim_mat)
@@ -257,6 +288,7 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 	pose_id = 0
 
 	for filename in sorted(glob.glob(images_dir+'/*.jpg')):
+		print(frame_id)
 		start = timer()
 		img = cv2.imread(filename)
 		img_h,img_w,_ = img.shape
@@ -293,6 +325,7 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 
 		if frame_id ==0:
 			Q_to_add = []
+			pfaces = []
 			for j in range(len(temp_Ji)):
 				temp_bbox = temp_bboxes[j]
 				temp_j = temp_Ji[j] #local
@@ -308,13 +341,14 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 				gimg = gimg[...,np.newaxis]
 				f = get_face_from_joints(gimg,tjoints)
 				f = resize(f,(64,64,1))
+				pfaces.append(f)
 
-				temp_pose = new_Pose(frame_id,pose_id,temp_j,temp_gj,temp_bbox,temp_v,f)
+				temp_pose = new_Pose(frame_id,pose_id,temp_j,temp_gj,temp_bbox,temp_v)
 				Q_to_add.append(temp_pose)
 				pose_id = pose_id + 1
 			frame_id = frame_id + 1
 			Q.append(Q_to_add)
-			pfaces = [x.face for x in Q[-1]]
+			# pfaces = [x.face for x in Q[-1]]
 			pid = [x.id for x in Q[-1]]
 		else:
 			#get faces
@@ -345,6 +379,7 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 			pid = list(range(len(faces)))
 
 			pose_id, temp_ids = get_id_to_assign(pose_id,Q,temp_Ji,mat_score,frame_id)
+			# print(temp_ids)
 
 			Q_to_add = []
 			for j in range(len(temp_Ji)):
@@ -354,7 +389,7 @@ def own_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_output
 				temp_gj = get_global_joints(temp_bbox,temp_j)
 				f = faces[j]
 				id_to_assign = temp_ids[j]
-				temp_pose = new_Pose(frame_id,id_to_assign,temp_j,temp_gj,temp_bbox,temp_v,f)
+				temp_pose = new_Pose(frame_id,id_to_assign,temp_j,temp_gj,temp_bbox,temp_v)
 				Q_to_add.append(temp_pose)
 			frame_id = frame_id + 1
 			Q.append(Q_to_add)
@@ -368,19 +403,20 @@ def clear_output_folder(output_dir):
 		os.remove(filename)
 	print('Output folder cleared')
 
-def make_video_own_track(input_images_dir,input_processing_times,Q):
+def make_video_own_track(input_images_dir,input_processing_times,Q,output_name):
 	img_array = []
-	ori_array = []
+	# ori_array = []
 	avg_time = np.mean(input_processing_times)
 	temp_AVG = 1/avg_time
 	to_add_avg = 'AVG_FPS: {:.2f}'.format(temp_AVG)
 	frame_count = 0
 
 	for filename in sorted(glob.glob(input_images_dir+'/*.jpg')):
+		print(filename)
 		img = cv2.imread(filename)
 		i_h, i_w,_ = img.shape
 		img_size = (i_w,i_h)
-		ori_array.append(img)
+		# ori_array.append(img)
 		temp_FPS = 1/input_processing_times[frame_count]
 		to_add_str = 'FPS: {:.2f}'.format(temp_FPS)
 		pos_FPS = (i_w - 200, i_h - 100)
@@ -406,12 +442,12 @@ def make_video_own_track(input_images_dir,input_processing_times,Q):
 			# draw bbox
 			c_code = (0,255,0)
 
-			cv2.rectangle(img,(int(tbbox[0]),int(tbbox[1])),(int(tbbox[0]+tbbox[2]),int(tbbox[1]+tbbox[3])),c_code,3)
+			cv2.rectangle(img,(int(tbbox[0]),int(tbbox[1])),(int(tbbox[0]+tbbox[2]),int(tbbox[1]+tbbox[3])),c_code,2)
 
 			# put id in image
 
 			pos_txt = (int(tbbox[0]+tbbox[2]-50),int(tbbox[1]+tbbox[3]-10))
-			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=3)
+			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=2)
 
 			# draw skeleton
 			skeleton_list = [(0,1),(2,0),(0,3),(0,4),(3,5),(4,6),(5,7),(6,8),(4,3),(3,9),(4,10),(10,9),(9,11),(10,12),(11,13),(12,14)]
@@ -426,24 +462,22 @@ def make_video_own_track(input_images_dir,input_processing_times,Q):
 				tc = color_list[ci%6]
 				ci = ci + 1
 				if tvs[p1] == 1 and tvs[p2] == 1:
-					cv2.line(img,(x1,y1),(x2,y2),tc,3)
+					cv2.line(img,(x1,y1),(x2,y2),tc,2)
 
 			# dot
 			for i in range(15):
 				x,y = g_kps[i,:].tolist()
 				if tvs[i] == 1:
-					cv2.circle(img,(x,y),2,(0,0,255),4)
-
+					cv2.circle(img,(x,y),2,(0,0,255),3)
+		# img_out_name = './temp/{0:05d}.jpg'.format(frame_count)
+		# cv2.imwrite(img_out_name,img)
 		img_array.append(img)
 		frame_count = frame_count + 1
 
-	# out = cv2.VideoWriter('./output/original.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 15, img_size)
-	# for i in range(len(ori_array)):
-	# 	out.write(ori_array[i])
-	# out.release()
+	
 	four_cc = cv2.VideoWriter_fourcc(*'mp4v')
 
-	out = cv2.VideoWriter('output.mp4',four_cc, 15, img_size)
+	out = cv2.VideoWriter(output_name,four_cc, 8, img_size)
 	for i in range(len(img_array)):
 		out.write(img_array[i])
 	out.release()

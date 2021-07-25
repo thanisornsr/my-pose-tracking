@@ -459,7 +459,7 @@ def clear_output_folder(output_dir):
 		os.remove(filename)
 	print('Output folder cleared')
 # ---------------------------------------------------------------------------------------------------------------------------
-def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
+def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir,output_name):
 	img_array = []
 	ori_array = []
 	frame_count = 0
@@ -503,7 +503,7 @@ def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 			pos_txt = (int(xmax-10),int(ymax-50))
 			# print(pos_txt)
 			# pos_txt = (900,360)
-			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=3)
+			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=2)
 
 			#draw skeleton
 			skeleton_list = [(0,1),(2,0),(0,3),(0,4),(3,5),(4,6),(5,7),(6,8),(4,3),(3,9),(4,10),(10,9),(9,11),(10,12),(11,13),(12,14)]
@@ -516,13 +516,13 @@ def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 					y1,x1 = tkps[p1]
 					y2,x2 = tkps[p2]
 					tc = color_list[ci%6]
-					cv2.line(img,(x1,y1),(x2,y2),tc,3)
+					cv2.line(img,(x1,y1),(x2,y2),tc,2)
 				ci = ci + 1
 			# dot
 			for i in range(len(tvs)):
 				if tvs[i] == 1:
 					y,x = tkps[i]
-					cv2.circle(img,(x,y),2,(0,0,255),4)
+					cv2.circle(img,(x,y),2,(0,0,255),3)
 		img_array.append(img)
 		frame_count = frame_count + 1
 
@@ -532,7 +532,7 @@ def make_vid_from_dict_joint_flow(Q,input_times,input_img_dir):
 	# out.release()
 	four_cc = cv2.VideoWriter_fourcc(*'mp4v')
 
-	out = cv2.VideoWriter('output.mp4',four_cc, 15, img_size)
+	out = cv2.VideoWriter(output_name,four_cc, 8, img_size)
 	for i in range(len(img_array)):
 		out.write(img_array[i])
 	out.release()

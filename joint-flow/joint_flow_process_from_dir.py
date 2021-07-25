@@ -32,7 +32,7 @@ input_shape = (368,368)
 output_shape = (46,46)
 n_keypoints = 15
 n_limbs = 16
-
+argument_list = a.input_dir.split('/')
 USE_FP16 = False # USE FP32
 
 # build openpose
@@ -108,13 +108,13 @@ Q,processing_times = joint_flow_from_dir(a.input_dir,input_shape,output_shape,co
 
 print('Processing frames: done')
 
-# print('Creating video: ...')
+print('Creating video: ...')
 # clear_output_folder('.')
-# make_vid_from_dict_joint_flow(Q,processing_times,a.input_dir) 
-# print('Creating video: done')
+make_vid_from_dict_joint_flow(Q,processing_times,a.input_dir,'JF_'+argument_list[2]+'_'+argument_list[3]+'_output.mp4') 
+print('Creating video: done')
 
 
 print('Creating JSON: ...')
-write_processing_times_JSON_JF(processing_times,'JF_processing_time.json')
-write_Q_JSON_JF(Q,'JF_Q.json')
+write_processing_times_JSON_JF(processing_times,'JF_'+argument_list[2]+'_'+argument_list[3]+'_processing_time.json')
+write_Q_JSON_JF(Q,'JF_'+argument_list[2]+'_'+argument_list[3]+'_Q.json')
 print('Creating JSON: done')

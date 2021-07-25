@@ -462,7 +462,7 @@ def clear_output_folder(output_dir):
 		os.remove(filename)
 	print('Output folder cleared')
 
-def make_video_light_track(input_images_dir,input_processing_times,input_Q):
+def make_video_light_track(input_images_dir,input_processing_times,input_Q,output_name):
 	img_array = []
 	ori_array = []
 	avg_time = np.mean(input_processing_times)
@@ -499,12 +499,12 @@ def make_video_light_track(input_images_dir,input_processing_times,input_Q):
 			# draw bbox
 			c_code = (0,255,0)
 
-			cv2.rectangle(img,(int(tbbox[0]),int(tbbox[1])),(int(tbbox[0]+tbbox[2]),int(tbbox[1]+tbbox[3])),c_code,3)
+			cv2.rectangle(img,(int(tbbox[0]),int(tbbox[1])),(int(tbbox[0]+tbbox[2]),int(tbbox[1]+tbbox[3])),c_code,2)
 
 			# put id in image
 
 			pos_txt = (int(tbbox[0]+tbbox[2]-50),int(tbbox[1]+tbbox[3]-10))
-			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=3)
+			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=2)
 
 			# draw skeleton
 			skeleton_list = [(0,1),(2,0),(0,3),(0,4),(3,5),(4,6),(5,7),(6,8),(4,3),(3,9),(4,10),(10,9),(9,11),(10,12),(11,13),(12,14)]
@@ -519,13 +519,13 @@ def make_video_light_track(input_images_dir,input_processing_times,input_Q):
 				tc = color_list[ci%6]
 				ci = ci + 1
 				if tvs[p1] == 1 and tvs[p2] == 1:
-					cv2.line(img,(x1,y1),(x2,y2),tc,3)
+					cv2.line(img,(x1,y1),(x2,y2),tc,2)
 
 			# dot
 			for i in range(15):
 				x,y = g_kps[i,:].tolist()
 				if tvs[i] == 1:
-					cv2.circle(img,(x,y),2,(0,0,255),4)
+					cv2.circle(img,(x,y),2,(0,0,255),3)
 
 		img_array.append(img)
 		frame_count = frame_count + 1
@@ -536,7 +536,7 @@ def make_video_light_track(input_images_dir,input_processing_times,input_Q):
 	# out.release()
 	four_cc = cv2.VideoWriter_fourcc(*'mp4v')
 
-	out = cv2.VideoWriter('output.mp4',four_cc, 15, img_size)
+	out = cv2.VideoWriter(output_name,four_cc, 8, img_size)
 	for i in range(len(img_array)):
 		out.write(img_array[i])
 	out.release()
@@ -563,7 +563,7 @@ def write_Q_JSON(Q,filename):
 				if int(temp_v[i]) == 0:
 					temp_kps.append(0)
 					temp_kps.append(0)
-					else:
+				else:
 					temp_kps.append(int(temp_kp[i,0]))
 					temp_kps.append(int(temp_kp[i,1]))
 				temp_kps.append(int(temp_v[i]))

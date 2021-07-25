@@ -168,10 +168,11 @@ def cal_sim_mat(input_ori_Q,input_Ji,current_frame):
 			tx1,tx2,tw,th = j_P.bbox
 			cal_v = j_P.valids
 			s2 = tw*th
-			j_joint = j_P.joints
+			j_joint = np.transpose(j_P.global_joints)
 			# calculate score
 			d2 = (i_joint - j_joint)**2
 			d2 = np.sum(d2,axis=0)
+			# print(d2)
 			term =  np.divide(d2,OKS_k**2)
 			term = term/(2*s2)
 			term_exp = np.exp(-1*term)
@@ -203,7 +204,7 @@ def get_id_to_assign(inputo_pose_id,input2_ori_Q,input2_Ji,input_sim_mat,current
 	can_new_id = list(range(input_nh))
 	id_to_assign = np.full([1,input_nh],None)
 
-	max_score_th = 0.6
+	max_score_th = 0.1
 
 	while len(can_old_id)>0 and len(can_new_id)>0 :
 		
@@ -250,6 +251,40 @@ class Pose:
 		self.bbox = None
 		self.valids = None
 		self.global_joints = None
+
+def local_to_global_kps(input_j,input_bbox,output_shape):
+	tkps = input_j
+	tbbox = input_bbox
+
+	o_kps = np.transpose(np.copy(tkps))
+
+	if tbbox[2] == 0:
+		tbbox[2] = 1
+	if tbbox[3] == 0:
+		tbbox[3] = 1
+
+	scale_x = tbbox[2]/output_shape[1]
+	scale_y = tbbox[3]/output_shape[0]
+
+	temp_scale = np.array([scale_x,scale_y])
+
+	for ikps in range(len(o_kps)):
+		temp_val = o_kps[ikps,:]
+
+		o_kps[ikps,:] = np.multiply(temp_val,temp_scale)
+
+	g_kps = o_kps
+	o_x = tbbox[0]
+	o_y = tbbox[1]
+	o_origin = np.array([tbbox[0],tbbox[1]])
+
+	for gkps in range(len(g_kps)):
+		if g_kps[gkps,0] != 0:
+			g_kps[gkps,:] = g_kps[gkps,:] + o_origin
+
+	return g_kps
+
+
 
 def get_global_kps(input_pose,output_shape):
 	temp_p = input_pose
@@ -352,8 +387,11 @@ def flow_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_outpu
 				temp_bbox = temp_bboxes[j]
 				temp_j = temp_Ji[j]
 				temp_v = temp_Vi[j]
+
+				temp_gj = local_to_global_kps(temp_j,temp_bbox,(64, 48))
 				temp_pose = new_Pose(frame_id,pose_id,temp_j,temp_bbox,temp_v)
-				temp_pose = get_global_kps(temp_pose,(64, 48))
+				temp_pose.global_joints = temp_gj
+				# print(temp_pose.global_joints)
 				Q.append(temp_pose)
 				pose_id = pose_id + 1
 
@@ -361,7 +399,15 @@ def flow_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_outpu
 		else:
 			# similarity matrix from Joints
 			# print(frame_id)
-			temp_sim_mat = cal_sim_mat(Q,temp_Ji,frame_id)
+			temp_Gi = []
+			temp_GiTP = []
+			for ijoint in range(len(temp_Ji)):
+				tgi = local_to_global_kps(temp_Ji[ijoint],temp_bboxes[ijoint],(64, 48))
+				temp_Gi.append(tgi)
+				temp_GiTP.append(np.transpose(tgi))
+			
+			temp_sim_mat = cal_sim_mat(Q,temp_GiTP,frame_id)
+			# print(temp_sim_mat)
 			# print(temp_sim_mat)
 			# Assign id and create Pose 
 			pose_id, temp_ids = get_id_to_assign(pose_id,Q,temp_Ji,temp_sim_mat,frame_id)
@@ -372,11 +418,14 @@ def flow_track_from_dir(images_dir,hdetector,context2,bindings2,d_input2,d_outpu
 				# print(temp_bbox)
 				temp_j = temp_Ji[j]
 				temp_v = temp_Vi[j]
+				temp_gj = temp_Gi[j]
 				t_pose_id = temp_ids[j]
 				temp_pose = new_Pose(frame_id,t_pose_id,temp_j,temp_bbox,temp_v)
-				temp_pose = get_global_kps(temp_pose,(64, 48))
+				temp_pose.global_joints = temp_gj
+				
 				# print(temp_pose.bbox)
 				Q.append(temp_pose)
+			# break
 
 			frame_id = frame_id + 1
 		end = timer()
@@ -390,7 +439,7 @@ def clear_output_folder(output_dir):
 		os.remove(filename)
 	print('Output folder cleared')
 
-def make_video_flow_track(input_images_dir,input_processing_times,input_Q):
+def make_video_flow_track(input_images_dir,input_processing_times,input_Q,output_name):
 	img_array = []
 	ori_array = []
 	avg_time = np.mean(input_processing_times)
@@ -427,12 +476,12 @@ def make_video_flow_track(input_images_dir,input_processing_times,input_Q):
 			# draw bbox
 			c_code = (0,255,0)
 
-			cv2.rectangle(img,(int(tbbox[0]),int(tbbox[1])),(int(tbbox[0]+tbbox[2]),int(tbbox[1]+tbbox[3])),c_code,3)
+			cv2.rectangle(img,(int(tbbox[0]),int(tbbox[1])),(int(tbbox[0]+tbbox[2]),int(tbbox[1]+tbbox[3])),c_code,2)
 
 			# put id in image
 
 			pos_txt = (int(tbbox[0]+tbbox[2]-50),int(tbbox[1]+tbbox[3]-10))
-			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=3)
+			cv2.putText(img,str(qs.id),pos_txt,cv2.FONT_HERSHEY_COMPLEX,2,c_code,thickness=2)
 
 			# draw skeleton
 			skeleton_list = [(0,1),(2,0),(0,3),(0,4),(3,5),(4,6),(5,7),(6,8),(4,3),(3,9),(4,10),(10,9),(9,11),(10,12),(11,13),(12,14)]
@@ -447,13 +496,13 @@ def make_video_flow_track(input_images_dir,input_processing_times,input_Q):
 				tc = color_list[ci%6]
 				ci = ci + 1
 				if tvs[p1] == 1 and tvs[p2] == 1:
-					cv2.line(img,(x1,y1),(x2,y2),tc,3)
+					cv2.line(img,(x1,y1),(x2,y2),tc,2)
 
 			# dot
 			for i in range(15):
 				x,y = g_kps[i,:].tolist()
 				if tvs[i] == 1:
-					cv2.circle(img,(x,y),2,(0,0,255),4)
+					cv2.circle(img,(x,y),2,(0,0,255),3)
 
 		img_array.append(img)
 		frame_count = frame_count + 1
@@ -464,7 +513,7 @@ def make_video_flow_track(input_images_dir,input_processing_times,input_Q):
 	# out.release()
 	four_cc = cv2.VideoWriter_fourcc(*'mp4v')
 
-	out = cv2.VideoWriter('output.mp4',four_cc, 15, img_size)
+	out = cv2.VideoWriter(output_name,four_cc,8, img_size)
 	for i in range(len(img_array)):
 		out.write(img_array[i])
 	out.release()
