@@ -12,6 +12,7 @@ import pycuda.autoinit
 import scipy 
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
+import time
 
 from skimage.transform import resize
 from timeit import default_timer as timer
@@ -117,9 +118,9 @@ pose_id = 0
 
 while True:
 	start = timer()
-	ret, img = cap.read() 
+	ret, img_ori = cap.read() 
 
-	img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+	img = cv2.cvtColor(img_ori,cv2.COLOR_BGR2RGB)
 	img = img / 255.0
 	img = np.reshape(resize(img,input_shape),(1,*input_shape,-1))
 	img = img.astype(np.float32)
@@ -127,7 +128,7 @@ while True:
 	if frame_id == 0:
 		poses,pose_id = joint_flow_pipeline_first_frame(pose_id,img,context2,bindings2,d_input2,d_output2,stream2,output2)
 		poses = set_valid_to_poses(poses)
-		poses = convert_kps_to_global(poses,img_w,img_h)
+		poses = convert_kps_to_global(poses,i_w,i_h)
 
 		Q[frame_id] = poses
 		poses0 = poses
@@ -137,7 +138,7 @@ while True:
 	else:
 		poses,pose_id = joint_flow_pipeline(pose_id,img0,img,poses0,context3,bindings3,d_input3,d_output3,stream3,output3)
 		poses = set_valid_to_poses(poses)
-		poses = convert_kps_to_global(poses,img_w,img_h)
+		poses = convert_kps_to_global(poses,i_w,i_h)
 
 		Q[frame_id] = poses
 		poses0 = poses
@@ -145,10 +146,10 @@ while True:
 		end = timer()
 		frame_id = frame_id + 1
 
-	img_out = np.copy(img)
+	img_out = np.copy(img_ori)
 
 	if is_draw_skeleton:
-		Qs = Q[frame_count]
+		Qs = Q[frame_id-1]
 
 		temp_FPS = 1/(end-start)
 		to_add_str = 'FPS: {:.2f}'.format(temp_FPS)
@@ -194,21 +195,20 @@ while True:
 				if tvs[i] == 1:
 					y,x = tkps[i]
 					cv2.circle(img_out,(x,y),2,(0,0,255),3)
+	print(img_out.shape)
+	print(type(img_out))
 	if is_show:
-        cv2.imshow('frame', img_out)
-
-    if is_save:
-        num_name = '{:07d}'.format(frame_id-1)
-        cv2.imwrite('./live_imgs/'+num_name+'.jpg',img_out)
-
-    if not is_show:
-        print(frame_id)
-        if frame_id == 120:
-            break
-    
-    #Waits for a user input to quit the application    
-    if cv2.waitKey(1) & 0xFF == ord('q'):    
-        break
-        
+		cv2.imshow('frame', img_out)
+	if is_save:
+		num_name = '{:07d}'.format(frame_id-1)
+		cv2.imwrite('./live_imgs/'+num_name+'.jpg',img_out)
+		
+	if not is_show:
+		print(frame_id)
+		if frame_id == 120:
+			break
+	#Waits for a user input to quit the application    
+	if cv2.waitKey(1) & 0xFF == ord('q'):
+		break
 cap.release()
 cv2.destroyAllWindows()

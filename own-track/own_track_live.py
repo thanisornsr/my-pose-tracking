@@ -110,7 +110,7 @@ if is_save:
 # counting down
 countdown_sec = 5
 while countdown_sec > 0:
-    print('Flow track live start in: {}'.format(countdown_sec))
+    print('Own track live start in: {}'.format(countdown_sec))
     time.sleep(1)
     countdown_sec = countdown_sec - 1
 
@@ -120,10 +120,10 @@ frame_id = 0
 pose_id = 0
 while True:
 	start = timer()
-	ret, img = cap.read()
+	ret, img_ori = cap.read()
 
-	temp_bboxes = img_to_bboxes(img,hdetector,img_h,img_w)
-	img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+	temp_bboxes = img_to_bboxes(img_ori,trt_yolo,i_h,i_w)
+	img = cv2.cvtColor(img_ori,cv2.COLOR_BGR2RGB)
 	img = img / 255.0
 
 	batch_imgs = []
@@ -224,7 +224,7 @@ while True:
 		Q.append(Q_to_add)
 	end = timer()
 
-	img_out = np.copy(img)
+	img_out = np.copy(img_ori)
 
 	if is_draw_skeleton:
 		temp_FPS = 1/(end-start)
@@ -267,20 +267,17 @@ while True:
 				x,y = g_kps[i,:].tolist()
 				if tvs[i] == 1:
 					cv2.circle(img_out,(x,y),2,(0,0,255),3)
-
-    if is_show:
-    	cv2.imshow('frame', img_out)
-    if is_save:
-        num_name = '{:07d}'.format(frame_id-1)
-        cv2.imwrite('./live_imgs/'+num_name+'.jpg',img_out)
-
-    if not is_show:
-        print(frame_id)
-        if frame_id == 120:
-            break
-    #Waits for a user input to quit the application    
-    if cv2.waitKey(1) & 0xFF == ord('q'):    
-        break
-
+	if is_show:
+		cv2.imshow('frame', img_out)
+	if is_save:
+		num_name = '{:07d}'.format(frame_id-1)
+		cv2.imwrite('./live_imgs/'+num_name+'.jpg',img_out)
+	if not is_show:
+		print(frame_id)
+		if frame_id == 120:
+			break
+	#Waits for a user input to quit the application    
+	if cv2.waitKey(1) & 0xFF == ord('q'):
+		break
 cap.release()
 cv2.destroyAllWindows()
