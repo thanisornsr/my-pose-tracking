@@ -104,6 +104,7 @@ Q = []
 frame_id = 0
 pose_id = 0
 key_frame = KEY_FRAME
+total_FPS = 0
 while True:
     start = timer()
     ret, img = cap.read() 
@@ -177,10 +178,11 @@ while True:
     if is_draw_skeleton:
 
         temp_FPS = 1/(end-start)
+        total_FPS = total_FPS + end - start
         to_add_str = 'FPS: {:.2f}'.format(temp_FPS)
         pos_FPS = (i_w - 200, i_h - 100)
         c_code = (255,0,0)
-        cv2.putText(img_out,to_add_str,pos_FPS,cv2.FONT_HERSHEY_COMPLEX,1,c_code,thickness=3)
+        # cv2.putText(img_out,to_add_str,pos_FPS,cv2.FONT_HERSHEY_COMPLEX,1,c_code,thickness=3)
         for qs in current_Q:
             tid = qs.id
             tbbox = qs.bbox
@@ -222,7 +224,8 @@ while True:
 
     if not is_show:
         print(frame_id)
-        if frame_id == 120:
+        if frame_id == 150:
+            print('AVG FPS for 150 frames: {}'.format(150/total_FPS))
             break
     
     #Waits for a user input to quit the application    

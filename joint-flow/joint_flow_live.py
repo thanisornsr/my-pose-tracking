@@ -19,8 +19,8 @@ from timeit import default_timer as timer
 
 #live config
 is_draw_skeleton = True
-is_show = True
-is_save = False
+is_show = False
+is_save = True
 
 # config 
 # myBatchSize = 1
@@ -115,7 +115,7 @@ Q = {}
 
 frame_id = 0
 pose_id = 0
-
+total_FPS = 0
 while True:
 	start = timer()
 	ret, img_ori = cap.read() 
@@ -152,10 +152,11 @@ while True:
 		Qs = Q[frame_id-1]
 
 		temp_FPS = 1/(end-start)
+		total_FPS = total_FPS + end - start
 		to_add_str = 'FPS: {:.2f}'.format(temp_FPS)
 		c_code = (255,0,0)
 		pos_FPS = (i_w-200,i_h-100)
-		cv2.putText(img_out,to_add_str,pos_FPS,cv2.FONT_HERSHEY_COMPLEX,1,c_code,thickness=3)
+		# cv2.putText(img_out,to_add_str,pos_FPS,cv2.FONT_HERSHEY_COMPLEX,1,c_code,thickness=3)
 
 		for qs in Qs:
 			tid = qs.id
@@ -195,17 +196,17 @@ while True:
 				if tvs[i] == 1:
 					y,x = tkps[i]
 					cv2.circle(img_out,(x,y),2,(0,0,255),3)
-	print(img_out.shape)
-	print(type(img_out))
+	# print(img_out.shape)
+	# print(type(img_out))
 	if is_show:
 		cv2.imshow('frame', img_out)
 	if is_save:
 		num_name = '{:07d}'.format(frame_id-1)
 		cv2.imwrite('./live_imgs/'+num_name+'.jpg',img_out)
-		
 	if not is_show:
 		print(frame_id)
-		if frame_id == 120:
+		if frame_id == 150:
+			print('AVG FPS for 150 frames: {}'.format(150/total_FPS))
 			break
 	#Waits for a user input to quit the application    
 	if cv2.waitKey(1) & 0xFF == ord('q'):

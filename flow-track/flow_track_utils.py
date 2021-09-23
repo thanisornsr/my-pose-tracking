@@ -214,9 +214,9 @@ def get_id_to_assign(inputo_pose_id,input2_ori_Q,input2_Ji,input_sim_mat,current
 		max_score = np.amax(get_id_sim_mat)
 		# print('Max score: {}'.format(max_score))
 		if max_score < max_score_th:
-			# print('BREAK!!')
 			break
 		else:
+			
 			res = np.where(get_id_sim_mat == max_score)
 			# print('res:{}'.format(res))
 			max_pos = [res[0][0],res[1][0]]
@@ -226,6 +226,7 @@ def get_id_to_assign(inputo_pose_id,input2_ori_Q,input2_Ji,input_sim_mat,current
 			m_P = input2_Q[mj]
 			m_id = m_P.id
 			id_to_assign[0,mi] = m_id
+			# print(id_to_assign)
 			# print(m_id)
 			can_old_id.remove(m_id)
 			can_new_id.remove(mi)
@@ -235,6 +236,7 @@ def get_id_to_assign(inputo_pose_id,input2_ori_Q,input2_Ji,input_sim_mat,current
 			get_id_sim_mat[row_to_rm,:] = 0
 
 	n_new = np.sum((id_to_assign == None).astype('int'))
+	# print(n_new)
 	if n_new > 0:
 		for l in range(input_nh):
 			id_to_check = id_to_assign[0,l]

@@ -18,8 +18,8 @@ from timeit import default_timer as timer
 
 #live config
 is_draw_skeleton = True
-is_show = True
-is_save = False
+is_show = False
+is_save = True
 
 
 
@@ -102,7 +102,7 @@ while countdown_sec > 0:
 Q = []
 frame_id = 0
 pose_id = 0
-
+total_FPS = 0
 while True:
     start = timer()
     ret, img = cap.read() 
@@ -142,15 +142,31 @@ while True:
             temp_bbox = temp_bboxes[j]
             temp_j = temp_Ji[j]
             temp_v = temp_Vi[j]
+
+            # temp_pose = new_Pose(frame_id,pose_id,temp_j,temp_bbox,temp_v)
+            # temp_pose = get_global_kps(temp_pose,(64, 48))
+
+            temp_gj = local_to_global_kps(temp_j,temp_bbox,(64, 48))
             temp_pose = new_Pose(frame_id,pose_id,temp_j,temp_bbox,temp_v)
-            temp_pose = get_global_kps(temp_pose,(64, 48))
+            temp_pose.global_joints = temp_gj
+
+
             Q.append(temp_pose)
             current_Q.append(temp_pose)
             pose_id = pose_id + 1
 
         frame_id = frame_id + 1
     else:
-        temp_sim_mat = cal_sim_mat(Q,temp_Ji,frame_id)
+
+        temp_Gi = []
+        temp_GiTP = []
+        for ijoint in range(len(temp_Ji)):
+            tgi = local_to_global_kps(temp_Ji[ijoint],temp_bboxes[ijoint],(64, 48))
+            temp_Gi.append(tgi)
+            temp_GiTP.append(np.transpose(tgi))
+        
+        temp_sim_mat = cal_sim_mat(Q,temp_GiTP,frame_id)
+        # temp_sim_mat = cal_sim_mat(Q,temp_Ji,frame_id)
 
         pose_id, temp_ids = get_id_to_assign(pose_id,Q,temp_Ji,temp_sim_mat,frame_id)
         for j in range(nh):
@@ -158,9 +174,10 @@ while True:
             # print(temp_bbox)
             temp_j = temp_Ji[j]
             temp_v = temp_Vi[j]
+            temp_gj = temp_Gi[j]
             t_pose_id = temp_ids[j]
             temp_pose = new_Pose(frame_id,t_pose_id,temp_j,temp_bbox,temp_v)
-            temp_pose = get_global_kps(temp_pose,(64, 48))
+            temp_pose.global_joints = temp_gj
             current_Q.append(temp_pose)
             Q.append(temp_pose)
 
@@ -173,10 +190,11 @@ while True:
     if is_draw_skeleton:
 
         temp_FPS = 1/(end-start)
+        total_FPS = total_FPS + end - start
         to_add_str = 'FPS: {:.2f}'.format(temp_FPS)
         pos_FPS = (i_w - 200, i_h - 100)
         c_code = (255,0,0)
-        cv2.putText(img_out,to_add_str,pos_FPS,cv2.FONT_HERSHEY_COMPLEX,1,c_code,thickness=3)
+        # cv2.putText(img_out,to_add_str,pos_FPS,cv2.FONT_HERSHEY_COMPLEX,1,c_code,thickness=3)
         for qs in current_Q:
             tid = qs.id
             tbbox = qs.bbox
@@ -208,7 +226,7 @@ while True:
                 x,y = g_kps[i,:].tolist()
                 if tvs[i] == 1:
                     cv2.circle(img_out,(x,y),2,(0,0,255),4)
-                    
+    # print(img_out)
     if is_show:
         cv2.imshow('frame', img_out)
 
@@ -218,10 +236,11 @@ while True:
 
     if not is_show:
         print(frame_id)
-        if frame_id == 120:
+        if frame_id == 150:
+            print('AVG FPS for 150 frames: {}'.format(150/total_FPS))
             break
     
-    #Waits for a user input to quit the application    
+    #Waits for a user input to quit the application
     if cv2.waitKey(1) & 0xFF == ord('q'):    
         break
 
