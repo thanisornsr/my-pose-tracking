@@ -205,8 +205,8 @@ while True:
 		cv2.imwrite('./live_imgs/'+num_name+'.jpg',img_out)
 	if not is_show:
 		print(frame_id)
-		if frame_id == 150:
-			print('AVG FPS for 150 frames: {}'.format(150/total_FPS))
+		if frame_id == 50:
+			print('AVG FPS for 50 frames: {}'.format(50/total_FPS))
 			break
 	#Waits for a user input to quit the application    
 	if cv2.waitKey(1) & 0xFF == ord('q'):
